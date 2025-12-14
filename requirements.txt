@@ -1,0 +1,30 @@
+# fastapi==0.95.2
+# uvicorn[standard]==0.22.0
+# python-dotenv==1.1.1
+# requests==2.31.0
+# pydantic==1.10.11
+# langchain==0.0.271
+# openai==2.8.1
+# sqlalchemy==2.0.44
+# aiosqlite==0.18.0
+#//second time 
+# fastapi==0.95.2
+# uvicorn[standard]==0.22.0
+# python-dotenv==1.1.1
+# requests==2.31.0
+# pydantic==1.10.11
+# langchain==0.0.271
+# openai==1.108.2
+# sqlalchemy==2.0.44
+# aiosqlite==0.18.0
+
+
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+python-dotenv==1.1.1
+requests==2.31.0
+pydantic==1.10.11
+langchain==0.0.271
+openai==0.28.0
+sqlalchemy==2.0.44
+aiosqlite==0.18.0

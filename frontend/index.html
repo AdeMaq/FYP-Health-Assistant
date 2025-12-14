@@ -1,0 +1,436 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Fitness Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .chat-container {
+      width: 500px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      max-height: 80vh;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 15px;
+      font-size: 1.2em;
+      font-weight: bold;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+    }
+    .chat-body {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .message {
+      max-width: 80%;
+      padding: 10px 15px;
+      border-radius: 20px;
+      line-height: 1.4;
+    }
+    .user-msg {
+      background: #007bff;
+      color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+    }
+    .bot-msg {
+      background: #eee;
+      color: #000;
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #eee;
+    }
+    .chat-input textarea {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      resize: none;
+      border-radius: 0 0 0 10px;
+      font-family: Arial, sans-serif;
+    }
+    .chat-input button {
+      padding: 0 20px;
+      border: none;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 0 0 10px 0;
+    }
+    .chat-input button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">Fitness Chatbot</div>
+    <div class="chat-body" id="chat-body"></div>
+    <div class="chat-input">
+      <textarea id="msg" rows="2" placeholder="Ask the bot..."></textarea>
+      <button onclick="send()">Send</button>
+    </div>
+  </div>
+
+<script>
+const BASE = "http://localhost:8000";
+const chatBody = document.getElementById("chat-body");
+
+function addMessage(text, sender) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message " + (sender === "user" ? "user-msg" : "bot-msg");
+    msgDiv.innerHTML = text;
+    chatBody.appendChild(msgDiv);
+    chatBody.scrollTop = chatBody.scrollHeight; // auto-scroll
+}
+
+/* ---- SEND MESSAGE ---- */
+async function send() {
+    const message = document.getElementById("msg").value.trim();
+    if(!message) return;
+    addMessage(message, "user");
+    document.getElementById("msg").value = "";
+
+    try {
+        const res = await fetch(`${BASE}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, user_id: "default_user" })
+        });
+
+        const data = await res.json();
+
+        let botText = "";
+
+        if(data.intent === "DIET" && data.response) {
+            const diet = data.response;
+            botText += `<strong>🥗 Suggested Diet Plan (${data.entities.difficulty || 'N/A'} – ${diet.target_calories} Calories)</strong><br>`;
+            botText += `<em>Notes:</em> ${diet.notes}<br>`;
+            botText += `<ul>`;
+            for(const meal of ["breakfast","lunch","dinner"]) {
+                if(diet.meals[meal]) {
+                    botText += `<li><strong>${meal.charAt(0).toUpperCase()+meal.slice(1)}:</strong> ${diet.meals[meal].text} (${diet.meals[meal].cal_est} cal)</li>`;
+                }
+            }
+            botText += `</ul>`;
+        } else {
+            botText = data.response_text || JSON.stringify(data, null, 2);
+        }
+
+        addMessage(botText, "bot");
+
+    } catch(err) {
+        addMessage("Error: " + err, "bot");
+    }
+}
+</script>
+</body>
+</html>
+<!-- <!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Fitness Chatbot (Frontend)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #out { white-space: pre-wrap; background:#f7f7f7; padding:10px; border-radius:6px;}
+    input, textarea { width: 100%; margin: 6px 0; padding: 8px; }
+    button { padding: 10px 15px; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Fitness Chatbot</h1>
+
+  <textarea id="msg" placeholder="Ask the bot..."></textarea>
+  <input id="user_id" placeholder="User ID (optional)" />
+
+  <button onclick="send()">Send</button>
+  <button onclick="runAgent()">Run Agent</button>
+
+  <h3>Response</h3>
+  <div id="out">No response yet</div>
+
+<script>
+const BASE = "http://localhost:8000";
+
+/* ---- SEND MESSAGE ---- */
+async function send() {
+    const message = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+
+    try {
+        const res = await fetch(`${BASE}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, user_id })
+        });
+
+        const data = await res.json(); // parse JSON response
+
+        if(data.intent === "DIET" && data.response) {
+            const diet = data.response;
+            let output = `<h4>🥗 Suggested Diet Plan (${data.entities.difficulty || 'N/A'} – ${diet.target_calories} Calories)</h4>`;
+            output += `<p><strong>Notes:</strong> ${diet.notes}</p>`;
+            output += `<ul>`;
+            for(const meal of ["breakfast","lunch","dinner"]) {
+                if(diet.meals[meal]) {
+                    output += `<li><strong>${meal.charAt(0).toUpperCase()+meal.slice(1)}:</strong> ${diet.meals[meal].text} (${diet.meals[meal].cal_est} cal)</li>`;
+                }
+            }
+            output += `</ul>`;
+            document.getElementById("out").innerHTML = output;
+        } else {
+            document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+        }
+
+    } catch(err) {
+        document.getElementById("out").innerText = "Error: " + err;
+    }
+}
+
+/* ---- RUN AGENT ---- */
+async function runAgent() {
+    const goal = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+
+    try {
+        const res = await fetch(`${BASE}/agent/run`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ goal, user_id })
+        });
+
+        const text = await res.text();
+        console.log("Agent Response:", text);
+        document.getElementById("out").innerText = text;
+    }
+    catch(err) {
+        document.getElementById("out").innerText = "Agent Error: " + err;
+    }
+}
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Fitness Chatbot (Frontend)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #out { white-space: pre-wrap; background:#f7f7f7; padding:10px; border-radius:6px;}
+    input, textarea { width: 100%; margin: 6px 0; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Fitness Chatbot</h1>
+  <textarea id="msg" placeholder="Ask the bot..."></textarea>
+  <input id="user_id" placeholder="user id (optional)" />
+  <button type="button" onclick="send()">Send</button>
+  <button type="button" onclick="runAgent()">Run Agent (goal)</button>
+
+
+  <h3>Response</h3>
+  <div id="out">No response yet</div>
+
+<script>
+const BASE = "http://localhost:8000";
+
+async function send(){
+    const message = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+
+    try {
+        const res = await fetch(BASE + "/chat", {
+            method: "POST",
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ message, user_id })
+        });
+
+        const text = await res.text();
+        console.log("Status:", res.status);
+        console.log("Raw:", text);
+
+        document.getElementById("out").innerText = text;
+    }
+    catch(err){
+        console.error("Error:", err);
+        document.getElementById("out").innerText = "Error: " + err;
+    }
+}
+
+async function runAgent(){
+    const goal = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+
+    try {
+        const res = await fetch(BASE + "/agent/run", {
+            method: "POST",
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ goal, user_id })
+        });
+
+        const text = await res.text();
+        console.log("Agent Raw:", text);
+        document.getElementById("out").innerText = text;
+    }
+    catch(err){
+        console.error("Agent Error:", err);
+        document.getElementById("out").innerText = "Error: " + err;
+    }
+}
+
+// attach actions
+//document.getElementById("sendBtn").onclick = send;
+//document.getElementById("agentBtn").onclick = runAgent;
+</script>
+</body>
+</html> -->
+
+
+
+<!-- <!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Fitness Chatbot (Frontend)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #out { white-space: pre-wrap; background:#f7f7f7; padding:10px; border-radius:6px;}
+    input, textarea { width: 100%; margin: 6px 0; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Fitness Chatbot</h1>
+  <textarea id="msg" placeholder="Ask the bot: e.g. 'Give me a 30 min chest workout for beginners'"></textarea>
+  <input id="user_id" placeholder="user id (optional)" />
+  <button onclick="send()">Send</button>
+  <button onclick="runAgent()">Run Agent (goal)</button>
+
+  <h3>Response</h3>
+  <div id="out">No response yet</div>
+  <script>
+const BASE = "http://localhost:8000";
+
+async function send(){
+    const message = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+
+    try {
+        const res = await fetch(BASE + "/chat", {
+            method: "POST",
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ message, user_id })
+        });
+
+        console.log("Status:", res.status);
+        const text = await res.text();
+        console.log("Raw response:", text);
+
+        const data = JSON.parse(text);
+        document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+    }
+    catch(err){
+        console.error("Fetch error:", err);
+        document.getElementById("out").innerText = "Error: " + err;
+    }
+}
+</script>
+
+<!-- <script>
+const BASE = "http://localhost:8000";
+
+async function send(){
+    const message = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+    const res = await fetch(BASE + "/chat", {
+        method: "POST",
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ message, user_id })
+    });
+    const data = await res.json();
+    document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+}
+
+async function runAgent(){
+    const goal = document.getElementById("msg").value;
+    const user_id = document.getElementById("user_id").value || "default_user";
+    const res = await fetch(BASE + "/agent/run", {
+        method: "POST",
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ goal, user_id })
+    });
+    const data = await res.json();
+    document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+}
+</script> 
+</body>
+</html> --> -->
