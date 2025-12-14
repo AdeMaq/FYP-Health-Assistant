@@ -1,0 +1,17 @@
+[
+  { "keyword": "skinny", "synonyms": ["bulking", "muscle build", "mass", "hypertrophy"] },
+  { "keyword": "thin", "synonyms": ["bulking", "muscle build"] },
+  { "keyword": "fat", "synonyms": ["weight loss", "cardio", "shred", "burn", "HIIT"] },
+  { "keyword": "face", "synonyms": ["jawline", "face yoga", "facial exercises", "slimming"] },
+  { "keyword": "chubby", "synonyms": ["weight loss", "fat burn", "cardio"] },
+  { "keyword": "abs", "synonyms": ["core", "six pack", "belly", "stomach", "obliques"] },
+  { "keyword": "belly", "synonyms": ["abs", "core", "waist", "muffin top", "fat loss"] },
+  { "keyword": "arms", "synonyms": ["biceps", "triceps", "forearms", "upper body"] },
+  { "keyword": "legs", "synonyms": ["squats", "quads", "hamstrings", "calves", "lower body"] },
+  { "keyword": "thigh", "synonyms": ["legs", "inner thigh", "gap", "lower body", "slimming"] },
+  { "keyword": "butt", "synonyms": ["glutes", "booty", "squats", "hip thrusts"] },
+  { "keyword": "breast", "synonyms": ["chest", "pecs", "pectoral", "pushups", "upper body"] },
+  { "keyword": "chest", "synonyms": ["pecs", "bench press", "pushups", "upper body"] },
+  { "keyword": "back", "synonyms": ["lats", "pullups", "rows", "lower back"] },
+  { "keyword": "shoulders", "synonyms": ["delts", "overhead press", "lateral raise"] }
+]

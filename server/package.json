@@ -1,0 +1,27 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "googleapis": "^168.0.0",
+    "pg": "^8.16.3",
+    "typeorm": "^0.3.28",
+    "youtube-sr": "^4.3.12"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
