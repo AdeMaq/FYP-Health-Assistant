@@ -1,50 +1,61 @@
-**fitness-agent-python**
-  A versatile conversational AI agent designed to assist users with fitness, nutrition, and general well-being queries. This agent leverages various services for language processing, data retrieval, and memory management to provide personalized and actionable advice.
+# 🤖 fitness-agent-python
 
-**Features**
-**Conversational AI:**
-Utilizes Google Gemini services for sophisticated natural language understanding and generation.
-**Nutrition Service:**
-Integrates with external APIs (like Edamam and Spoonacular) to retrieve detailed nutrition and recipe information.
-**Fitness Service:**
-Likely includes logic or integrations for fitness-related advice and tracking (though the specific service name flm_service might be custom or stand for something else).
-**Persistent Memory:** 
-Employs a database (db_memory.py, memory.db) to maintain conversation history and user-specific information.
-**Frontend:** A simple web interface (index.html) for interacting with the agent.
-**Project Structure:**
-The project follows a modular structure, separating core logic, services, and the user interface.
-fitness-agent-python/
-├── .env                  # Environment variables for API keys and configuration
-├── .venv                 # Python virtual environment (ignored by Git)
-├── app/                  # The core application logic and services
-│   ├── __pycache__
-│   ├── agent.py          # The central orchestrator/brain of the agent
-│   ├── db_memory.py      # Database initialization and interface
-│   ├── gemini_service.py # Handler for interactions with the Gemini API
-│   ├── flm_service.py    # Fitness/Service Logic (e.g., calculations, advice logic)
-│   ├── main.py           # Application entry point/API server (e.g., using FastAPI/Flask)
-│   ├── memory.db         # SQLite database file for conversation memory
-│   ├── models.py         # Data models/schemas (e.g., Pydantic models)
-│   ├── nlp.py            # Natural Language Processing utilities
-│   ├── nutrition_service.py # Handler for nutrition-related API calls
-│   └── youtube_service.py # Handler for YouTube API calls
-├── frontend/             # Static files for the web interface
-│   └── index.html        # Main HTML file for the chat interface
-├── README.md             # This file
-└── requirements.txt      # List of required Python packages
-**Getting Started**:  Follow these steps to set up and run the project locally.
-**1. Prerequisites:**
-     Python 3.8+
-     A Google AI API Key (for Gemini)
-     API Keys for the following services (as indicated in your .env):
-        Spoonacular API
-        Gemini API
-        OpenAI API
-**2. SetupClone the repository (if applicable):**
-  git clone <your-repo-link>
-  cd fitness-agent-python
-**Create a virtual environment:**
-  python -m venv .venv
-  source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-  Install dependencies: pip install -r requirements.txt
+A versatile conversational AI agent designed to assist users with fitness, nutrition, and general well-being queries. This agent leverages various services for language processing, data retrieval, and memory management to provide personalized and actionable advice.
+
+## ✨ Features
+
+* **Conversational AI:** Utilizes Google Gemini services for sophisticated natural language understanding and generation.
+* **Nutrition Service:** Integrates with external APIs (like Edamam and Spoonacular) to retrieve detailed nutrition and recipe information.
+* **Fitness Service:** Includes custom logic or integrations for fitness-related advice and tracking (`flm_service`).
+* **Video Integration:** Uses the YouTube API to find and summarize relevant instructional or informational videos.
+* **Persistent Memory:** Employs a database (`db_memory.py`, `memory.db`) to maintain conversation history and user-specific information.
+* **Frontend:** A simple web interface (`index.html`) for interacting with the agent.
+
+## 🚀 Getting Started
+
+Follow these steps to set up and run the project locally.
+
+### 1. Prerequisites
+
+* Python 3.8+
+* A Google AI API Key (for Gemini)
+* API Keys for the following services (as indicated in your `.env`):
+    * Gemini API
+    * OpenAI API
+    * Spoonacular API
+
+### 2. Setup
+
+1.  **Clone the repository (if applicable):**
+   
+    git clone <your-repo-link>
+    cd fitness-agent-python
+    
+
+2.  **Create a virtual environment:**
+    
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+    
+3.  **Install dependencies:**
+    
+    pip install -r requirements.txt
+    
+
+4.  **Configure Environment Variables:**
+
+    Create a file named `.env` in the root directory and populate it with your necessary API keys and configuration.
+
+    ```env
+    # .env example
+  
+    # --- App settings ---
+    HOST=0.0.0.0
+    PORT=8000
+    ```
+
+### 3. Running the Application
+
+Execute the main application file:
+uvicorn app.main:app --reload
 
