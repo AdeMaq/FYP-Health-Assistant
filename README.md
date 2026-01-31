@@ -57,8 +57,11 @@ Follow these steps to set up and run the project locally.
 ### 3. Running the Application
 
 Execute the main application file:
+
 1 - Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
 2 - venv\Scripts\activate
+
 3 - uvicorn app.main:app --reload
 
 
