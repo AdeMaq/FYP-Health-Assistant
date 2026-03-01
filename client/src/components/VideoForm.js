@@ -73,12 +73,12 @@ function VideoForm() {
     return (
         <div>
             <h1>Manage Workouts</h1>
-            <button
+            {/* <button
                 onClick={handleSeed}
                 style={{ marginBottom: "20px", padding: "10px 15px", cursor: "pointer" }}
             >
                 Push videos.json to DB
-            </button>
+            </button> */}
 
             {/* Form */}
             <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>

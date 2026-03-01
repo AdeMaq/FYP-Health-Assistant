@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Workout from "./components/Workout";
 import VideoForm from "./components/VideoForm";
 import TagsManagement from "./components/TagsManagement";
+import PostureMap from "./components/PostureMap";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
             <Route path="/" element={<Workout />} />
             <Route path="/manage" element={<VideoForm />} />
             <Route path="/tags" element={<TagsManagement />} />
+            <Route path="/map" element={<PostureMap />} />
           </Routes>
         </div>
 
@@ -54,7 +56,7 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "14px 30px",
+    padding: "5px 5px",
     backgroundColor: "#ffffff",
     borderBottom: "1px solid #ddd",
     boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
@@ -81,11 +83,11 @@ const styles = {
   },
 
   content: {
-    maxWidth: "1100px",
-    margin: "30px auto",
+    maxWidth: "1500px",
+    margin: "5px auto",
     backgroundColor: "#fff",
-    padding: "25px",
-    borderRadius: "10px",
+    padding: "5px",
+    borderRadius: "3px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.06)"
   }
 };

@@ -1,6 +1,6 @@
 const videoService = require("../services/videoService");
 const AppDataSource = require("../datasource");
-const videosData = require("../videos.json"); 
+const videosData = require("../videos.json");
 
 exports.getAllVideos = async (req, res, next) => {
     try {
@@ -79,6 +79,21 @@ exports.recommendVideo = async (req, res, next) => {
 
         const result = await videoService.processChatPrompt(prompt);
         res.json(result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.cleanupDatabase = async (req, res, next) => {
+    try {
+        const allVideos = await videoService.getAllVideos();
+        // The service function we just wrote handles the deletion
+        const aliveVideos = await videoService.filterAvailableVideos(allVideos);
+        res.json({
+            message: "Cleanup complete",
+            removed: allVideos.length - aliveVideos.length,
+            remaining: aliveVideos.length
+        });
     } catch (err) {
         next(err);
     }

@@ -9,7 +9,7 @@ function TagsManagement() {
   
   // Form States
   const [newStopword, setNewStopword] = useState("");
-  const [editSynonym, setEditSynonym] = useState(null); // { id, keyword, synonyms }
+  const [editSynonym, setEditSynonym] = useState(null); 
   const [synInput, setSynInput] = useState({ keyword: "", synonyms: "" });
 
   const navigate = useNavigate();
