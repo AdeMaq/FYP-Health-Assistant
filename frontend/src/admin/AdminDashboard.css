@@ -589,3 +589,19 @@
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
+
+
+.admin-count-badge {
+    background: #6366f11a;
+    color: #6366f1;
+    padding: 2px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #6366f130;
+    display: inline-block;
+}
+
+.admin-table td {
+    vertical-align: middle;
+}

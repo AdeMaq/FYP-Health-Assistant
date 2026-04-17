@@ -22,30 +22,6 @@ namespace FitBot.Api.Controllers
             _videoService = videoService;
         }
 
-        //[HttpPost("message")]
-        //[Authorize]
-        //public async Task<IActionResult> SendMessage([FromBody] ChatRequestDto request)
-        //{
-        //    try
-        //    {
-        //        var username = User.FindFirst(ClaimTypes.Name)?.Value;
-        //        if (string.IsNullOrEmpty(username))
-        //            return Unauthorized();
-
-        //        // Always fetch the real profile from DB (more authoritative than frontend payload)
-        //        var user = await _profileService.GetUserByUsernameAsync(username);
-        //        var profile = user?.Profile;
-
-        //        var result = await _chatService.GetAiResponseAsync(request.Message, request.History, profile);
-        //        return Ok(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine("CHAT ERROR: " + ex.Message);
-        //        return StatusCode(500, new { reply = "Sorry, I encountered an error. Please try again.", source = "error" });
-        //    }
-        //}
-
         [HttpGet("history")]
         [Authorize]
         public async Task<IActionResult> GetHistory()

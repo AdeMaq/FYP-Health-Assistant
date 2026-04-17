@@ -15,17 +15,45 @@ namespace FitBot.Api.Services
 
         private string GetJsonPath(string fileName)
         {
-            // Looks in the project root directory
             return Path.Combine(AppContext.BaseDirectory, fileName);
         }
 
-        public VideoService(AppDbContext context, IConfiguration config, IHttpClientFactory httpClientFactory, ILogger<VideoService> logger)
+        public VideoService(
+            AppDbContext context,
+            IConfiguration config,
+            IHttpClientFactory httpClientFactory,
+            ILogger<VideoService> logger)
         {
             _context = context;
             _config = config;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
+
+        // ── Discovery topics (mirrors cronService.js) ────────────────────────
+        private static readonly string[] _discoveryTopics = new[]
+        {
+            "fat loss cardio workout for beginners",
+            "strength training for weight gain",
+            "high calorie burning hiit",
+            "full body weight loss exercises at home",
+            "face fat loss exercises jawline workout",
+            "lower belly fat blasting workout",
+            "exercises to reduce arm fat",
+            "glute building hip dips workout",
+            "shoulder mobility and strength",
+            "dumbbell only back exercises",
+            "inner thigh toning workout",
+            "six pack abs circuit",
+            "posture correction exercises",
+            "lower back pain relief stretches",
+            "yoga for stress and anxiety",
+            "resistance band full body workout",
+            "jump rope workout for fat loss",
+            "bench press form for chest growth",
+            "core stability pilates",
+            "bodyweight pull workout no equipment"
+        };
 
         // ── Mapping helpers ──────────────────────────────────────────────────
         private static VideoResponseDto Map(Video v) => new()
@@ -46,12 +74,23 @@ namespace FitBot.Api.Services
         };
 
         private static StopWordResponseDto MapSw(StopWord s) => new()
-        { Id = s.Id, Word = s.Word };
+        {
+            Id = s.Id,
+            Word = s.Word
+        };
 
         // ── CRUD Videos ──────────────────────────────────────────────────────
         public async Task<List<VideoResponseDto>> GetAllVideosAsync()
-            => await _context.Videos.OrderByDescending(v => v.CreatedAt)
-                .Select(v => new VideoResponseDto { Id = v.Id, Title = v.Title, Link = v.Link, Tags = v.Tags, CreatedAt = v.CreatedAt })
+            => await _context.Videos
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => new VideoResponseDto
+                {
+                    Id = v.Id,
+                    Title = v.Title,
+                    Link = v.Link,
+                    Tags = v.Tags,
+                    CreatedAt = v.CreatedAt
+                })
                 .ToListAsync();
 
         public async Task<VideoResponseDto?> GetVideoByIdAsync(int id)
@@ -119,10 +158,14 @@ namespace FitBot.Api.Services
         public async Task<TagsDataDto> GetTagsDataAsync()
         {
             var synonyms = await _context.Synonyms
-                .OrderByDescending(s => s.IsNew).ThenBy(s => s.Keyword)
+                .OrderByDescending(s => s.IsNew)
+                .ThenBy(s => s.Keyword)
                 .ToListAsync();
+
             var stopwords = await _context.StopWords
-                .OrderBy(s => s.Word).ToListAsync();
+                .OrderBy(s => s.Word)
+                .ToListAsync();
+
             return new TagsDataDto
             {
                 Synonyms = synonyms.Select(MapSyn).ToList(),
@@ -132,8 +175,11 @@ namespace FitBot.Api.Services
 
         public async Task<SynonymResponseDto> SaveSynonymAsync(SynonymDto dto)
         {
-            var synList = dto.Synonyms.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                             .Select(s => s.Trim()).ToList();
+            var synList = dto.Synonyms
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .ToList();
+
             if (dto.Id.HasValue)
             {
                 var existing = await _context.Synonyms.FindAsync(dto.Id.Value);
@@ -146,6 +192,7 @@ namespace FitBot.Api.Services
                     return MapSyn(existing);
                 }
             }
+
             var s = new Synonym { Keyword = dto.Keyword, IsNew = false };
             s.Synonyms = synList;
             _context.Synonyms.Add(s);
@@ -167,6 +214,7 @@ namespace FitBot.Api.Services
             var word = dto.Word.Trim().ToLowerInvariant();
             var existing = await _context.StopWords.FirstOrDefaultAsync(s => s.Word == word);
             if (existing != null) return MapSw(existing);
+
             var sw = new StopWord { Word = word };
             _context.StopWords.Add(sw);
             await _context.SaveChangesAsync();
@@ -184,7 +232,6 @@ namespace FitBot.Api.Services
 
         public async Task SeedTagsAsync()
         {
-            // ── Synonyms ──
             var synPath = GetJsonPath("synonyms.json");
             if (File.Exists(synPath))
             {
@@ -206,7 +253,6 @@ namespace FitBot.Api.Services
                 }
             }
 
-            // ── Stopwords ──
             var swPath = GetJsonPath("stopwords.json");
             if (File.Exists(swPath))
             {
@@ -227,13 +273,169 @@ namespace FitBot.Api.Services
             await _context.SaveChangesAsync();
         }
 
-        // ── Chat / NLP ───────────────────────────────────────────────────────
+        // ── Auto Discovery (cron equivalent) ─────────────────────────────────
+        public async Task AutoDiscoverVideosAsync(string topic)
+        {
+            try
+            {
+                _logger.LogInformation("[AutoDiscover] Processing topic: {Topic}", topic);
+
+                // ExtractSearchQueryAsync already:
+                //   1. strips stop words
+                //   2. maps known keywords via Synonyms table
+                //   3. calls Datamuse for unknown words and saves them with IsNew=true
+                var (searchQuery, tags) = await ExtractSearchQueryAsync(topic);
+
+                const int Limit = 4;
+
+                // Score existing DB videos for this topic
+                var allVideos = await _context.Videos.ToListAsync();
+                var scored = allVideos
+                    .Select(v =>
+                    {
+                        int score = 0;
+                        var titleLower = v.Title.ToLowerInvariant();
+                        var firstWord = searchQuery.Split(' ')[0];
+                        if (titleLower.Contains(firstWord)) score += 50;
+                        foreach (var tag in tags)
+                        {
+                            if (titleLower.Contains(tag)) score += 20;
+                            if (v.Tags.Any(t => t.Contains(tag))) score += 15;
+                        }
+                        return (video: v, score);
+                    })
+                    .Where(x => x.score > 15)
+                    .ToList();
+
+                int videosAdded = 0;
+
+                // Only fetch from YouTube if fewer than 2 matching videos exist
+                // avoids hammering the API for already well-covered topics
+                if (scored.Count < 2)
+                {
+                    _logger.LogInformation(
+                        "[AutoDiscover] Gap found for '{Query}' ({Found} videos) — fetching from YouTube",
+                        searchQuery, scored.Count);
+
+                    var external = await FetchYouTubeAsync(searchQuery, Limit);
+
+                    foreach (var vid in external)
+                    {
+                        bool exists = await _context.Videos.AnyAsync(v => v.Link == vid.Link);
+                        if (!exists)
+                        {
+                            var newV = new Video { Title = vid.Title, Link = vid.Link };
+                            newV.Tags = tags;
+                            _context.Videos.Add(newV);
+                            videosAdded++;
+                        }
+                    }
+
+                    if (videosAdded > 0)
+                        _logger.LogInformation(
+                            "[AutoDiscover] Added {Count} new videos for topic: {Topic}",
+                            videosAdded, topic);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "[AutoDiscover] Topic '{Query}' already well-covered ({Count} videos), skipping YouTube.",
+                        searchQuery, scored.Count);
+                }
+
+                // Always update synonym coverage so IsNew flags stay accurate
+                await UpdateSynonymCoverageAsync(tags, searchQuery);
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "[AutoDiscover] Done. Topic: '{Topic}' | Videos added: {Count}",
+                    topic, videosAdded);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AutoDiscover] Failed for topic: {Topic}", topic);
+            }
+        }
+
+        // ── Synonym coverage updater ──────────────────────────────────────────
+        /// <summary>
+        /// For every tag produced by NLP for a topic:
+        ///   - If no Synonym entry exists yet, create one and try to fetch synonyms.
+        ///   - If an entry exists but has no synonyms, enrich it via Datamuse.
+        ///   - Flip IsNew = false when at least one DB video now matches that tag,
+        ///     meaning "this keyword has coverage in the video library".
+        ///   - Keep IsNew = true when no video covers it yet (shows as red row in admin).
+        /// </summary>
+        private async Task UpdateSynonymCoverageAsync(List<string> tags, string searchQuery)
+        {
+            foreach (var tag in tags.Distinct())
+            {
+                if (string.IsNullOrWhiteSpace(tag) || tag.Length < 2) continue;
+
+                var tagLower = tag.ToLowerInvariant();
+
+                // Check whether any video in DB matches this tag
+                bool videoExistsForTag = await _context.Videos.AnyAsync(v =>
+                    v.Title.ToLower().Contains(tagLower) ||
+                    v.TagsRaw.ToLower().Contains(tagLower));
+
+                var existing = await _context.Synonyms
+                    .FirstOrDefaultAsync(s => s.Keyword == tagLower);
+
+                if (existing == null)
+                {
+                    // Brand-new tag — create a synonym entry for it
+                    var fetched = await FetchDatamuseAsync(tagLower);
+
+                    var synEntry = new Synonym
+                    {
+                        Keyword = tagLower,
+                        IsNew = !videoExistsForTag
+                        // IsNew=false  → confirmed, video exists in DB
+                        // IsNew=true   → learned but no video yet (red in admin)
+                    };
+                    synEntry.Synonyms = fetched;
+
+                    _context.Synonyms.Add(synEntry);
+
+                    _logger.LogInformation(
+                        "[SynonymUpdate] Created entry for '{Tag}' | HasVideo: {Has} | Synonyms: {Count}",
+                        tagLower, videoExistsForTag, fetched.Count);
+                }
+                else
+                {
+                    // Entry already exists — update IsNew based on current video coverage
+                    bool wasNew = existing.IsNew;
+                    existing.IsNew = !videoExistsForTag;
+
+                    // Enrich synonyms list if it is empty
+                    if (existing.Synonyms.Count == 0)
+                    {
+                        var fetched = await FetchDatamuseAsync(tagLower);
+                        if (fetched.Count > 0)
+                        {
+                            existing.Synonyms = fetched;
+                            _logger.LogInformation(
+                                "[SynonymUpdate] Enriched synonyms for '{Tag}' ({Count} added)",
+                                tagLower, fetched.Count);
+                        }
+                    }
+
+                    if (wasNew != existing.IsNew)
+                        _logger.LogInformation(
+                            "[SynonymUpdate] '{Tag}' IsNew: {Old} → {New}",
+                            tagLower, wasNew, existing.IsNew);
+                }
+            }
+        }
+
+        // ── Chat / NLP ────────────────────────────────────────────────────────
         public async Task<ChatVideoResponseDto> ProcessChatPromptAsync(string prompt)
         {
             var (searchQuery, tags) = await ExtractSearchQueryAsync(prompt);
             const int Limit = 4;
 
-            // Score DB videos
             var allVideos = await _context.Videos.ToListAsync();
             var scored = allVideos.Select(v =>
             {
@@ -256,7 +458,6 @@ namespace FitBot.Api.Services
             var recommended = scored.Select(x => Map(x.video)).ToList();
             var source = "database";
 
-            // Fallback to YouTube API if not enough results
             if (recommended.Count < Limit)
             {
                 var external = await FetchYouTubeAsync(searchQuery, Limit - recommended.Count + 1);
@@ -279,6 +480,10 @@ namespace FitBot.Api.Services
                 }
             }
 
+            // Update synonym coverage after every chat prompt too
+            await UpdateSynonymCoverageAsync(tags, searchQuery);
+            await _context.SaveChangesAsync();
+
             return new ChatVideoResponseDto
             {
                 Message = $"Found exercises for: {searchQuery.Replace(" workout", "")}",
@@ -287,14 +492,18 @@ namespace FitBot.Api.Services
             };
         }
 
+        // ── NLP extraction ────────────────────────────────────────────────────
         private async Task<(string searchQuery, List<string> tags)> ExtractSearchQueryAsync(string prompt)
         {
             var stopWords = (await _context.StopWords.ToListAsync())
-                            .Select(s => s.Word.ToLowerInvariant()).ToHashSet();
+                            .Select(s => s.Word.ToLowerInvariant())
+                            .ToHashSet();
+
             var synonymData = await _context.Synonyms.ToListAsync();
 
             var clean = new string(prompt.ToLowerInvariant()
                 .Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray());
+
             var words = clean.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             var queryTerms = new List<string>();
@@ -304,6 +513,7 @@ namespace FitBot.Api.Services
             foreach (var w in words)
             {
                 if (w.Length < 2 || stopWords.Contains(w)) continue;
+
                 var mapped = synonymData.FirstOrDefault(s => s.Keyword == w);
                 if (mapped != null)
                 {
@@ -319,7 +529,7 @@ namespace FitBot.Api.Services
                 }
             }
 
-            // Auto-learn unknown words via Datamuse
+            // Auto-learn unknown words via Datamuse and save with IsNew=true
             foreach (var word in unknownWords)
             {
                 if (!await _context.Synonyms.AnyAsync(s => s.Keyword == word))
@@ -331,6 +541,7 @@ namespace FitBot.Api.Services
                     expandedTags.AddRange(onlineSyns);
                 }
             }
+
             await _context.SaveChangesAsync();
 
             var finalQuery = queryTerms.Count > 0
@@ -340,49 +551,70 @@ namespace FitBot.Api.Services
             return (finalQuery, expandedTags.Distinct().ToList());
         }
 
+        // ── Datamuse helper ───────────────────────────────────────────────────
         private async Task<List<string>> FetchDatamuseAsync(string word)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(5);
-                var url = $"https://api.datamuse.com/words?rel_syn={Uri.EscapeDataString(word)}&topics=fitness,exercise&max=6";
+
+                var url = $"https://api.datamuse.com/words?rel_syn={Uri.EscapeDataString(word)}" +
+                          $"&topics=fitness,exercise&max=6";
+
                 var resp = await client.GetAsync(url);
                 if (!resp.IsSuccessStatusCode) return new();
+
                 var json = await resp.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(json);
+
                 return doc.RootElement.EnumerateArray()
                     .Select(e => e.GetProperty("word").GetString() ?? "")
                     .Where(w => !string.IsNullOrEmpty(w))
-                    .Take(6).ToList();
+                    .Take(6)
+                    .ToList();
             }
-            catch { return new(); }
+            catch
+            {
+                return new();
+            }
         }
 
+        // ── YouTube helper ────────────────────────────────────────────────────
         private async Task<List<VideoDto>> FetchYouTubeAsync(string query, int limit)
         {
             var apiKey = _config["ApiKeys:YouTube"];
             if (string.IsNullOrEmpty(apiKey)) return new();
+
             try
             {
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(10);
+
                 var url = $"https://www.googleapis.com/youtube/v3/search?part=snippet" +
                           $"&q={Uri.EscapeDataString(query)}&type=video&maxResults={limit}" +
                           $"&relevanceLanguage=en&key={apiKey}";
+
                 var resp = await client.GetAsync(url);
                 if (!resp.IsSuccessStatusCode) return new();
+
                 var json = await resp.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(json);
+
                 return doc.RootElement.GetProperty("items").EnumerateArray()
                     .Select(item => new VideoDto
                     {
                         Title = item.GetProperty("snippet").GetProperty("title").GetString() ?? "",
-                        Link = $"https://www.youtube.com/watch?v={item.GetProperty("id").GetProperty("videoId").GetString()}",
+                        Link = $"https://www.youtube.com/watch?v=" +
+                               item.GetProperty("id").GetProperty("videoId").GetString(),
                         Tags = new()
-                    }).ToList();
+                    })
+                    .ToList();
             }
-            catch { return new(); }
+            catch
+            {
+                return new();
+            }
         }
     }
 }

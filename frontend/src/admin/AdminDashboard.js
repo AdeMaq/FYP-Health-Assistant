@@ -1,4 +1,3 @@
-// src/admin/AdminDashboard.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -47,7 +46,7 @@ const Toast = ({ msg, type, onClose }) => (
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
-// VIDEOS TAB
+// VIDEOS TAB (Updated with Numbering and Date Added)
 // ═══════════════════════════════════════════════════════════════════════════
 const VideosTab = ({ showToast }) => {
   const [videos, setVideos] = useState([]);
@@ -117,7 +116,10 @@ const VideosTab = ({ showToast }) => {
   return (
     <div className="admin-tab-content">
       <div className="admin-tab-header">
-        <h2 className="admin-section-title" style={{ margin: 0 }}>Manage Videos</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <h2 className="admin-section-title" style={{ margin: 0 }}>Manage Videos</h2>
+            <span className="admin-count-badge">{videos.length} Total</span>
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="admin-btn admin-btn-outline" onClick={fetchVideos}>
             <FaSync size={12} /> Refresh
@@ -178,20 +180,23 @@ const VideosTab = ({ showToast }) => {
           <table className="admin-table">
             <thead>
               <tr>
+                <th style={{ width: 40 }}>#</th>
                 <th>Title</th>
                 <th>Link</th>
                 <th>Tags</th>
+                <th>Added Date</th>
                 <th style={{ width: 100 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {videos.map(v => (
+              {videos.map((v, index) => (
                 <tr key={v.id}>
+                  <td style={{ color: '#94a3b8', fontWeight: '600' }}>{index + 1}</td>
                   <td className="admin-td-title">{v.title}</td>
                   <td>
                     <a href={v.link} target="_blank" rel="noopener noreferrer"
                       className="admin-link" title={v.link}>
-                      {v.link.length > 40 ? v.link.slice(0, 40) + '…' : v.link}
+                      {v.link.length > 30 ? v.link.slice(0, 30) + '…' : v.link}
                     </a>
                   </td>
                   <td>
@@ -200,6 +205,13 @@ const VideosTab = ({ showToast }) => {
                         <span key={i} className="admin-tag-chip">{t}</span>
                       ))}
                     </div>
+                  </td>
+                  <td style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    {v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, {
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                    }) : '—'}
                   </td>
                   <td>
                     <div className="admin-action-btns">
@@ -221,260 +233,259 @@ const VideosTab = ({ showToast }) => {
   );
 };
 
+// ... TagsTab and AdminDashboard components remain the same as your original code ...
+
 // ═══════════════════════════════════════════════════════════════════════════
-// TAGS TAB  (Synonyms + StopWords side by side)
+// TAGS TAB
 // ═══════════════════════════════════════════════════════════════════════════
 const TagsTab = ({ showToast }) => {
-  const [synonyms, setSynonyms] = useState([]);
-  const [stopwords, setStopwords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-
-  // Synonym form
-  const [editSyn, setEditSyn] = useState(null);
-  const [synForm, setSynForm] = useState({ keyword: '', synonyms: '' });
-
-  // Stopword form
-  const [newStop, setNewStop] = useState('');
-
-  const fetchTags = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.getTags();
-      setSynonyms(data.synonyms || []);
-      setStopwords(data.stopwords || []);
-    } catch { setSynonyms([]); setStopwords([]); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchTags(); }, [fetchTags]);
-
-  // ── Synonyms ──────────────────────────────────────────────────────────────
-  const saveSynonym = async (e) => {
-    e.preventDefault();
-    if (!synForm.keyword.trim()) return;
-    try {
-      await api.saveSynonym({
-        id: editSyn ? editSyn.id : null,
-        keyword: synForm.keyword.trim(),
-        synonyms: synForm.synonyms,
-      });
-      showToast(editSyn ? 'Synonym updated!' : 'Synonym added!', 'success');
-      setEditSyn(null);
-      setSynForm({ keyword: '', synonyms: '' });
-      fetchTags();
-    } catch { showToast('Failed to save synonym.', 'error'); }
-  };
-
-  const startEditSyn = (item) => {
-    setEditSyn(item);
-    setSynForm({ keyword: item.keyword, synonyms: (item.synonyms || []).join(', ') });
-  };
-
-  const deleteSynonym = async (id) => {
-    if (!window.confirm('Delete this keyword mapping?')) return;
-    try {
-      await api.deleteSynonym(id);
-      showToast('Synonym deleted.', 'success');
-      fetchTags();
-    } catch { showToast('Failed to delete.', 'error'); }
-  };
-
-  // ── Stopwords ─────────────────────────────────────────────────────────────
-  const addStopword = async (e) => {
-    e.preventDefault();
-    if (!newStop.trim()) return;
-    try {
-      await api.saveStopWord({ word: newStop.trim() });
-      showToast('Stopword added!', 'success');
-      setNewStop('');
-      fetchTags();
-    } catch { showToast('Failed to add stopword.', 'error'); }
-  };
-
-  const deleteStopword = async (id) => {
-    try {
-      await api.deleteStopWord(id);
-      showToast('Stopword removed.', 'success');
-      fetchTags();
-    } catch { showToast('Failed to delete.', 'error'); }
-  };
-
-  // ── Seed ──────────────────────────────────────────────────────────────────
-  const handleSeed = async () => {
-    if (!window.confirm('Load default synonyms and stopwords from JSON?')) return;
-    setSeeding(true);
-    try {
-      const res = await api.seedTags();
-      showToast(res.message || 'Tags seeded!', 'success');
-      fetchTags();
-    } catch { showToast('Seed failed.', 'error'); }
-    finally { setSeeding(false); }
-  };
-
-  return (
-    <div className="admin-tab-content">
-      <div className="admin-tab-header">
-        <h2 className="admin-section-title" style={{ margin: 0 }}>Tags &amp; Logic Management</h2>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="admin-btn admin-btn-outline" onClick={fetchTags}>
-            <FaSync size={12} /> Refresh
-          </button>
-          <button className="admin-btn admin-btn-seed" onClick={handleSeed} disabled={seeding}>
-            <FaSeedling size={12} /> {seeding ? 'Seeding…' : 'Load Defaults (JSON)'}
-          </button>
+    const [synonyms, setSynonyms] = useState([]);
+    const [stopwords, setStopwords] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [seeding, setSeeding] = useState(false);
+  
+    // Synonym form
+    const [editSyn, setEditSyn] = useState(null);
+    const [synForm, setSynForm] = useState({ keyword: '', synonyms: '' });
+  
+    // Stopword form
+    const [newStop, setNewStop] = useState('');
+  
+    const fetchTags = useCallback(async () => {
+      setLoading(true);
+      try {
+        const data = await api.getTags();
+        setSynonyms(data.synonyms || []);
+        setStopwords(data.stopwords || []);
+      } catch { setSynonyms([]); setStopwords([]); }
+      finally { setLoading(false); }
+    }, []);
+  
+    useEffect(() => { fetchTags(); }, [fetchTags]);
+  
+    // ── Synonyms ──────────────────────────────────────────────────────────────
+    const saveSynonym = async (e) => {
+      e.preventDefault();
+      if (!synForm.keyword.trim()) return;
+      try {
+        await api.saveSynonym({
+          id: editSyn ? editSyn.id : null,
+          keyword: synForm.keyword.trim(),
+          synonyms: synForm.synonyms,
+        });
+        showToast(editSyn ? 'Synonym updated!' : 'Synonym added!', 'success');
+        setEditSyn(null);
+        setSynForm({ keyword: '', synonyms: '' });
+        fetchTags();
+      } catch { showToast('Failed to save synonym.', 'error'); }
+    };
+  
+    const startEditSyn = (item) => {
+      setEditSyn(item);
+      setSynForm({ keyword: item.keyword, synonyms: (item.synonyms || []).join(', ') });
+    };
+  
+    const deleteSynonym = async (id) => {
+      if (!window.confirm('Delete this keyword mapping?')) return;
+      try {
+        await api.deleteSynonym(id);
+        showToast('Synonym deleted.', 'success');
+        fetchTags();
+      } catch { showToast('Failed to delete.', 'error'); }
+    };
+  
+    // ── Stopwords ─────────────────────────────────────────────────────────────
+    const addStopword = async (e) => {
+      e.preventDefault();
+      if (!newStop.trim()) return;
+      try {
+        await api.saveStopWord({ word: newStop.trim() });
+        showToast('Stopword added!', 'success');
+        setNewStop('');
+        fetchTags();
+      } catch { showToast('Failed to add stopword.', 'error'); }
+    };
+  
+    const deleteStopword = async (id) => {
+      try {
+        await api.deleteStopWord(id);
+        showToast('Stopword removed.', 'success');
+        fetchTags();
+      } catch { showToast('Failed to delete.', 'error'); }
+    };
+  
+    // ── Seed ──────────────────────────────────────────────────────────────────
+    const handleSeed = async () => {
+      if (!window.confirm('Load default synonyms and stopwords from JSON?')) return;
+      setSeeding(true);
+      try {
+        const res = await api.seedTags();
+        showToast(res.message || 'Tags seeded!', 'success');
+        fetchTags();
+      } catch { showToast('Seed failed.', 'error'); }
+      finally { setSeeding(false); }
+    };
+  
+    return (
+      <div className="admin-tab-content">
+        <div className="admin-tab-header">
+          <h2 className="admin-section-title" style={{ margin: 0 }}>Tags &amp; Logic Management</h2>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="admin-btn admin-btn-outline" onClick={fetchTags}>
+              <FaSync size={12} /> Refresh
+            </button>
+            <button className="admin-btn admin-btn-seed" onClick={handleSeed} disabled={seeding}>
+              <FaSeedling size={12} /> {seeding ? 'Seeding…' : 'Load Defaults (JSON)'}
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="admin-tags-grid">
-        {/* ── LEFT: Synonym Map ── */}
-        <div>
-          <h3 className="admin-sub-title">Synonym Map</h3>
-          <p className="admin-sub-desc">
-            Map keywords to synonyms.
-            <span className="admin-badge-new"> Red rows</span> = words learned from chat prompts.
-          </p>
-
-          <form onSubmit={saveSynonym} className="admin-form-card">
-            <div className="admin-form-row">
-              <input
-                className="admin-input"
-                placeholder="Keyword (e.g. skinny)"
-                value={synForm.keyword}
-                onChange={e => setSynForm({ ...synForm, keyword: e.target.value })}
-                required
-              />
-              <input
-                className="admin-input"
-                placeholder="Synonyms (comma-separated)"
-                value={synForm.synonyms}
-                onChange={e => setSynForm({ ...synForm, synonyms: e.target.value })}
-                style={{ flex: 2 }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button type="submit" className="admin-btn admin-btn-primary">
-                {editSyn ? <><FaCheck size={11} /> Update</> : <><FaPlus size={11} /> Add</>}
-              </button>
-              {editSyn && (
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-outline"
-                  onClick={() => { setEditSyn(null); setSynForm({ keyword: '', synonyms: '' }); }}
-                >
-                  Cancel
+  
+        <div className="admin-tags-grid">
+          {/* ── LEFT: Synonym Map ── */}
+          <div>
+            <h3 className="admin-sub-title">Synonym Map</h3>
+            <p className="admin-sub-desc">
+              Map keywords to synonyms.
+              <span className="admin-badge-new"> Red rows</span> = words learned from chat prompts.
+            </p>
+  
+            <form onSubmit={saveSynonym} className="admin-form-card">
+              <div className="admin-form-row">
+                <input
+                  className="admin-input"
+                  placeholder="Keyword (e.g. skinny)"
+                  value={synForm.keyword}
+                  onChange={e => setSynForm({ ...synForm, keyword: e.target.value })}
+                  required
+                />
+                <input
+                  className="admin-input"
+                  placeholder="Synonyms (comma-separated)"
+                  value={synForm.synonyms}
+                  onChange={e => setSynForm({ ...synForm, synonyms: e.target.value })}
+                  style={{ flex: 2 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button type="submit" className="admin-btn admin-btn-primary">
+                  {editSyn ? <><FaCheck size={11} /> Update</> : <><FaPlus size={11} /> Add</>}
                 </button>
+                {editSyn && (
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-outline"
+                    onClick={() => { setEditSyn(null); setSynForm({ keyword: '', synonyms: '' }); }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+  
+            <div className="admin-table-wrapper" style={{ maxHeight: 420 }}>
+              {loading ? (
+                <div className="admin-loading">Loading…</div>
+              ) : synonyms.length === 0 ? (
+                <div className="admin-empty">No synonyms yet.</div>
+              ) : (
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Keyword</th>
+                      <th>Synonyms</th>
+                      <th style={{ width: 80 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {synonyms.map(item => (
+                      <tr key={item.id} className={item.isNew ? 'admin-row-new' : ''}>
+                        <td>
+                          <strong>{item.keyword}</strong>
+                          {item.isNew && <span className="admin-new-badge">NEW</span>}
+                        </td>
+                        <td>
+                          <div className="admin-tags-cell">
+                            {(item.synonyms || []).length > 0
+                              ? (item.synonyms || []).map((s, i) => (
+                                <span key={i} className="admin-tag-chip">{s}</span>
+                              ))
+                              : <span className="admin-no-syns">No synonyms</span>}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="admin-action-btns">
+                            <button className="admin-icon-action" onClick={() => startEditSyn(item)} title="Edit">
+                              <FaEdit size={13} color="#6366f1" />
+                            </button>
+                            <button className="admin-icon-action" onClick={() => deleteSynonym(item.id)} title="Delete">
+                              <FaTrash size={13} color="#ef4444" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
-          </form>
-
-          <div className="admin-table-wrapper" style={{ maxHeight: 420 }}>
-            {loading ? (
-              <div className="admin-loading">Loading…</div>
-            ) : synonyms.length === 0 ? (
-              <div className="admin-empty">No synonyms yet.</div>
-            ) : (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Keyword</th>
-                    <th>Synonyms</th>
-                    <th style={{ width: 80 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {synonyms.map(item => (
-                    <tr key={item.id} className={item.isNew ? 'admin-row-new' : ''}>
-                      <td>
-                        <strong>{item.keyword}</strong>
-                        {item.isNew && <span className="admin-new-badge">NEW</span>}
-                      </td>
-                      <td>
-                        <div className="admin-tags-cell">
-                          {(item.synonyms || []).length > 0
-                            ? (item.synonyms || []).map((s, i) => (
-                              <span key={i} className="admin-tag-chip">{s}</span>
-                            ))
-                            : <span className="admin-no-syns">No synonyms</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="admin-action-btns">
-                          <button className="admin-icon-action" onClick={() => startEditSyn(item)} title="Edit">
-                            <FaEdit size={13} color="#6366f1" />
-                          </button>
-                          <button className="admin-icon-action" onClick={() => deleteSynonym(item.id)} title="Delete">
-                            <FaTrash size={13} color="#ef4444" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
           </div>
-        </div>
-
-        {/* ── RIGHT: Stop Words ── */}
-        <div>
-          <h3 className="admin-sub-title">Stop Words</h3>
-          <p className="admin-sub-desc">Words removed from user prompts before searching.</p>
-
-          <form onSubmit={addStopword} className="admin-form-card" style={{ display: 'flex', gap: 8 }}>
-            <input
-              className="admin-input"
-              placeholder="New stop word…"
-              value={newStop}
-              onChange={e => setNewStop(e.target.value)}
-              required
-            />
-            <button type="submit" className="admin-btn admin-btn-primary" style={{ flexShrink: 0 }}>
-              <FaPlus size={11} /> Add
-            </button>
-          </form>
-
-          <div className="admin-table-wrapper" style={{ maxHeight: 420 }}>
-            {loading ? (
-              <div className="admin-loading">Loading…</div>
-            ) : stopwords.length === 0 ? (
-              <div className="admin-empty">No stopwords yet.</div>
-            ) : (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Word</th>
-                    <th style={{ width: 60 }}>Delete</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stopwords.map(sw => (
-                    <tr key={sw.id}>
-                      <td>{sw.word}</td>
-                      <td>
-                        <button
-                          className="admin-icon-action"
-                          onClick={() => deleteStopword(sw.id)}
-                          title="Delete"
-                        >
-                          <FaTimes size={13} color="#ef4444" />
-                        </button>
-                      </td>
+  
+          {/* ── RIGHT: Stop Words ── */}
+          <div>
+            <h3 className="admin-sub-title">Stop Words</h3>
+            <p className="admin-sub-desc">Words removed from user prompts before searching.</p>
+  
+            <form onSubmit={addStopword} className="admin-form-card" style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="admin-input"
+                placeholder="New stop word…"
+                value={newStop}
+                onChange={e => setNewStop(e.target.value)}
+                required
+              />
+              <button type="submit" className="admin-btn admin-btn-primary" style={{ flexShrink: 0 }}>
+                <FaPlus size={11} /> Add
+              </button>
+            </form>
+  
+            <div className="admin-table-wrapper" style={{ maxHeight: 420 }}>
+              {loading ? (
+                <div className="admin-loading">Loading…</div>
+              ) : stopwords.length === 0 ? (
+                <div className="admin-empty">No stopwords yet.</div>
+              ) : (
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Word</th>
+                      <th style={{ width: 60 }}>Delete</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody>
+                    {stopwords.map(sw => (
+                      <tr key={sw.id}>
+                        <td>{sw.word}</td>
+                        <td>
+                          <button
+                            className="admin-icon-action"
+                            onClick={() => deleteStopword(sw.id)}
+                            title="Delete"
+                          >
+                            <FaTimes size={13} color="#ef4444" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN DASHBOARD
-// ═══════════════════════════════════════════════════════════════════════════
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalUsers: 0, usersWithProfile: 0, usersThisWeek: 0 });
@@ -533,12 +544,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-dashboard-wrapper">
-      {/* Toast */}
       {toast && (
         <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
       )}
 
-      {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="admin-sidebar-logo">
           <FaDumbbell />
@@ -567,9 +576,7 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="admin-main">
-        {/* Header */}
         <header className="admin-header">
           <div>
             <h1 className="admin-page-title">{pageTitles[activeNav]}</h1>
@@ -581,10 +588,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Content */}
         <div className="admin-content">
-
-          {/* ── DASHBOARD ── */}
           {activeNav === 'dashboard' && (
             <>
               <div className="admin-stats-grid">
@@ -634,7 +638,6 @@ export default function AdminDashboard() {
             </>
           )}
 
-          {/* ── USERS ── */}
           {activeNav === 'users' && (
             <div className="admin-users-placeholder">
               <FaUsers size={48} color="#6366f1" opacity={0.3} />
@@ -646,12 +649,10 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── VIDEOS ── */}
           {activeNav === 'videos' && (
             <VideosTab showToast={showToast} />
           )}
 
-          {/* ── TAGS ── */}
           {activeNav === 'tags' && (
             <TagsTab showToast={showToast} />
           )}

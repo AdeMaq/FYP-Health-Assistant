@@ -1,4 +1,4 @@
-// Program.cs  (full updated version)
+// Program.cs
 using FitBot.Api.Data;
 using FitBot.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -17,11 +17,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ── Register Services ──────────────────────────────────────────────────────
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
-builder.Services.AddScoped<IChatService, ChatService>();  
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IVideoService, VideoService>();
 
+// ── Background Job (cron equivalent) ──────────────────────────────────────
+builder.Services.AddHostedService<VideoDiscoveryJob>();
+
 // ── HttpClient for AI API calls ────────────────────────────────────────────
-builder.Services.AddHttpClient();                          // <-- ADD THIS
+builder.Services.AddHttpClient();
 
 // ── CORS ──────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
